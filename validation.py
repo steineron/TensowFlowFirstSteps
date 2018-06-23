@@ -101,6 +101,7 @@ def preprocess_targets(california_housing_dataframe):
 
 """For the **training set**, we'll choose the first 12000 examples, out of the total of 17000."""
 
+california_housing_dataframe = california_housing_dataframe.reindex(np.random.permutation(california_housing_dataframe.index))
 training_examples = preprocess_features(california_housing_dataframe.head(12000))
 training_examples.describe()
 
@@ -282,6 +283,34 @@ Check the data using some of the methods we've looked at before.  These might in
       * A second plot mapping color to predicted `median_house_value` for side-by-side comparison.
 """
 
+def my_input_fn(features, targets, batch_size=1, shuffle=True, num_epochs=None):
+    """Trains a linear regression model of one feature.
+  
+    Args:
+      features: pandas DataFrame of features
+      targets: pandas DataFrame of targets
+      batch_size: Size of batches to be passed to the model
+      shuffle: True or False. Whether to shuffle the data.
+      num_epochs: Number of epochs for which data should be repeated. None = repeat indefinitely
+    Returns:
+      Tuple of (features, labels) for next data batch
+    """
+    
+    # Convert pandas data into a dict of np arrays.
+    features = {key:np.array(value) for key,value in dict(features).items()}                                           
+ 
+    # Construct a dataset, and configure batching/repeating.
+    ds = Dataset.from_tensor_slices((features,targets)) # warning: 2GB limit
+    ds = ds.batch(batch_size).repeat(num_epochs)
+    
+    # Shuffle the data, if specified.
+    if shuffle:
+      ds = ds.shuffle(buffer_size=10000)
+    
+    # Return the next batch of data.
+    features, labels = ds.make_one_shot_iterator().get_next()
+    return features, labels
+
 def train_model(
     learning_rate,
     steps,
@@ -325,9 +354,14 @@ def train_model(
   )
   
   # 1. Create input functions.
-  training_input_fn = # YOUR CODE HERE
-  predict_training_input_fn = # YOUR CODE HERE
-  predict_validation_input_fn = # YOUR CODE HERE
+  # defined my_input_fn, and then created lambdas with specific arguments to it:
+  training_input_fn = lambda: my_input_fn(training_examples, training_targets, batch_size=batch_size)
+  
+  # same, but with 1 epoch
+  predict_training_input_fn = lambda: my_input_fn(training_examples, training_targets, num_epochs=1,batch_size=batch_size)
+  
+  #same, but with the validation examples and a single epoch
+  predict_validation_input_fn = lambda: my_input_fn(validation_examples, validation_targets, num_epochs=1,batch_size=batch_size)
   
   # Train the model, but do so inside a loop so that we can periodically assess
   # loss metrics.
@@ -342,9 +376,14 @@ def train_model(
         steps=steps_per_period,
     )
     # 2. Take a break and compute predictions.
-    training_predictions = # YOUR CODE HERE
-    validation_predictions = # YOUR CODE HERE
-    
+    # I predicted using predict_training_input_fn and converted to np.array 
+    training_predictions = linear_regressor.predict(input_fn=predict_training_input_fn)
+    training_predictions = np.array([item['predictions'][0] for item in training_predictions])
+
+    # I predicted using training_input_fn and converted to np.array 
+    validation_predictions = linear_regressor.predict(input_fn=predict_validation_input_fn)
+    validation_predictions = np.array([item['predictions'][0] for item in validation_predictions])
+
     # Compute training and validation loss.
     training_root_mean_squared_error = math.sqrt(
         metrics.mean_squared_error(training_predictions, training_targets))
