@@ -286,7 +286,7 @@ def train_model(
 #
 # Your code here: add your features of choice as a list of quoted strings.
 #
-minimal_features = [
+minimal_features = ['housing_median_age',	'total_rooms','median_income',	'rooms_per_person'
 ]
 
 assert minimal_features, "You must select at least one feature!"
@@ -298,8 +298,8 @@ minimal_validation_examples = validation_examples[minimal_features]
 # Don't forget to adjust these parameters.
 #
 train_model(
-    learning_rate=0.001,
-    steps=500,
+    learning_rate=0.0001,
+    steps=110,
     batch_size=5,
     training_examples=minimal_training_examples,
     training_targets=training_targets,
@@ -351,6 +351,89 @@ What's the best validation performance you can get?
 #
 # YOUR CODE HERE: Train on a new data set that includes synthetic features based on latitude.
 #
+
+def my_preprocess_features(california_housing_dataframe):
+  """Prepares input features from California housing data set.
+
+  Args:
+    california_housing_dataframe: A Pandas DataFrame expected to contain data
+      from the California housing data set.
+  Returns:
+    A DataFrame that contains the features to be used for the model, including
+    synthetic features.
+  """
+  selected_features = california_housing_dataframe[
+    ["latitude",
+     "longitude",
+     "housing_median_age",
+     "total_rooms",
+     "total_bedrooms",
+     "population",
+     "households",
+     "median_income"]]
+  processed_features = preprocess_features(california_housing_dataframe)
+  
+  # Create a synthetic feature.
+  processed_features["distance_from_SF"] = (
+    california_housing_dataframe["latitude"].apply(lambda lat: np.abs(38-lat)))
+      
+  for i in range(32,42):
+    processed_features['lat_%d_%d' %(i,i+1)] = (california_housing_dataframe["latitude"].apply(lambda lat: 1 if lat>=i and lat<i+1 else 0))
+  return processed_features
+ 
+# Choose the first 12000 (out of 17000) examples for training.
+training_examples = my_preprocess_features(california_housing_dataframe.head(12000))
+training_targets = preprocess_targets(california_housing_dataframe.head(12000))
+
+# Choose the last 5000 (out of 17000) examples for validation.
+validation_examples = my_preprocess_features(california_housing_dataframe.tail(5000))
+validation_targets = preprocess_targets(california_housing_dataframe.tail(5000))
+
+# Double-check that we've done the right thing.
+print("Training examples summary:")
+display.display(training_examples.describe())
+print("Validation examples summary:")
+display.display(validation_examples.describe())
+
+print("Training targets summary:")
+display.display(training_targets.describe())
+print("Validation targets summary:")
+display.display(validation_targets.describe())
+
+
+# describe teh correlations:
+
+correlation_dataframe = training_examples.copy()
+correlation_dataframe["target"] = training_targets["median_house_value"]
+
+correlation_dataframe.corr()
+
+minimal_features = [
+  "median_income",
+  'distance_from_SF',	
+    'lat_32_33',
+    'lat_33_34',
+    'lat_34_35',
+    'lat_35_36',
+    'lat_36_37',
+    'lat_37_38',
+    'lat_38_39',
+    'lat_39_40',
+    'lat_40_41',
+    'lat_41_42'
+]
+
+minimal_training_examples = training_examples[minimal_features]
+minimal_validation_examples = validation_examples[minimal_features]
+
+_ = train_model(
+    learning_rate=0.01,
+    steps=500,
+    batch_size=5,
+    training_examples=minimal_training_examples,
+    training_targets=training_targets,
+    validation_examples=minimal_validation_examples,
+    validation_targets=validation_targets)
 
 """### Solution
 
