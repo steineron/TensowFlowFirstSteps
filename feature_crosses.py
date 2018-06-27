@@ -359,10 +359,18 @@ def construct_feature_columns():
   #
   # YOUR CODE HERE: bucketize the following columns, following the example above:
   #
-  bucketized_latitude = 
-  bucketized_housing_median_age = 
-  bucketized_median_income =
-  bucketized_rooms_per_person =
+  bucketized_latitude = tf.feature_column.bucketized_column(
+    latitude, boundaries=get_quantile_based_boundaries(
+      training_examples["latitude"], 10))
+  bucketized_housing_median_age = tf.feature_column.bucketized_column(
+    housing_median_age, boundaries=get_quantile_based_boundaries(
+      training_examples["housing_median_age"], 3))
+  bucketized_median_income = tf.feature_column.bucketized_column(
+    median_income, boundaries=get_quantile_based_boundaries(
+      training_examples["median_income"], 6))
+  bucketized_rooms_per_person = tf.feature_column.bucketized_column(
+    rooms_per_person, boundaries=get_quantile_based_boundaries(
+      training_examples["rooms_per_person"], 4))
   
   feature_columns = set([
     bucketized_longitude,
@@ -513,7 +521,7 @@ def construct_feature_columns():
       training_examples["rooms_per_person"], 7))
   
   # YOUR CODE HERE: Make a feature column for the long_x_lat feature cross
-  long_x_lat = 
+  long_x_lat = tf.feature_column.crossed_column([bucketized_longitude, bucketized_latitude],1000)
   
   feature_columns = set([
     bucketized_longitude,
@@ -613,3 +621,71 @@ _ = train_model(
 
 So far, we've tried simple bucketized columns and feature crosses, but there are many more combinations that could potentially improve the results. For example, you could cross multiple columns. What happens if you vary the number of buckets? What other synthetic features can you think of? Do they improve the model?
 """
+
+def construct_feature_columns():
+  """Construct the TensorFlow Feature Columns.
+
+  Returns:
+    A set of feature columns
+  """ 
+  households = tf.feature_column.numeric_column("households")
+  longitude = tf.feature_column.numeric_column("longitude")
+  latitude = tf.feature_column.numeric_column("latitude")
+  housing_median_age = tf.feature_column.numeric_column("housing_median_age")
+  median_income = tf.feature_column.numeric_column("median_income")
+  rooms_per_person = tf.feature_column.numeric_column("rooms_per_person")
+  
+  # Divide households into 7 buckets.
+  bucketized_households = tf.feature_column.bucketized_column(
+    households, boundaries=get_quantile_based_boundaries(
+      training_examples["households"], 7))
+
+  # Divide longitude into 10 buckets.
+  bucketized_longitude = tf.feature_column.bucketized_column(
+    longitude, boundaries=get_quantile_based_boundaries(
+      training_examples["longitude"], 10))
+  
+  # Divide latitude into 10 buckets.
+  bucketized_latitude = tf.feature_column.bucketized_column(
+    latitude, boundaries=get_quantile_based_boundaries(
+      training_examples["latitude"], 10))
+
+  # Divide housing_median_age into 7 buckets.
+  bucketized_housing_median_age = tf.feature_column.bucketized_column(
+    housing_median_age, boundaries=get_quantile_based_boundaries(
+      training_examples["housing_median_age"], 7))
+  
+  # Divide median_income into 7 buckets.
+  bucketized_median_income = tf.feature_column.bucketized_column(
+    median_income, boundaries=get_quantile_based_boundaries(
+      training_examples["median_income"], 7))
+  
+  # Divide rooms_per_person into 7 buckets.
+  bucketized_rooms_per_person = tf.feature_column.bucketized_column(
+    rooms_per_person, boundaries=get_quantile_based_boundaries(
+      training_examples["rooms_per_person"], 7))
+  
+  # YOUR CODE HERE: Make a feature column for the long_x_lat feature cross
+  long_x_lat = tf.feature_column.crossed_column(
+  set([bucketized_longitude, bucketized_latitude,bucketized_housing_median_age]), hash_bucket_size=1000) 
+  
+  feature_columns = set([
+    bucketized_longitude,
+    bucketized_latitude,
+    bucketized_housing_median_age,
+    bucketized_households,
+    bucketized_median_income,
+    bucketized_rooms_per_person,
+    long_x_lat])
+  
+  return feature_columns
+
+_ = train_model(
+    learning_rate=1.0,
+    steps=500,
+    batch_size=100,
+    feature_columns=construct_feature_columns(),
+    training_examples=training_examples,
+    training_targets=training_targets,
+    validation_examples=validation_examples,
+    validation_targets=validation_targets)
