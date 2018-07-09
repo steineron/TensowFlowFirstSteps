@@ -352,7 +352,10 @@ def train_linear_classifier_model(
   # Create a linear classifier object.
   my_optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
   my_optimizer = tf.contrib.estimator.clip_gradients_by_norm(my_optimizer, 5.0)
-  linear_classifier = # YOUR CODE HERE: Construct the linear classifier.
+  linear_classifier = tf.estimator.LinearClassifier(
+      feature_columns=construct_feature_columns(training_examples),
+      optimizer=my_optimizer
+  )
   
   # Create input functions.
   training_input_fn = lambda: my_input_fn(training_examples, 
@@ -568,8 +571,8 @@ Often times, certain metrics improve at the detriment of others, and you'll need
 
 # TUNE THE SETTINGS BELOW TO IMPROVE AUC
 linear_classifier = train_linear_classifier_model(
-    learning_rate=0.000005,
-    steps=500,
+    learning_rate=0.000001,
+    steps=700,
     batch_size=20,
     training_examples=training_examples,
     training_targets=training_targets,
@@ -577,9 +580,10 @@ linear_classifier = train_linear_classifier_model(
     validation_targets=validation_targets)
 
 evaluation_metrics = linear_classifier.evaluate(input_fn=predict_validation_input_fn)
-
+print("Evaluation: %s" % evaluation_metrics.keys())
 print("AUC on the validation set: %0.2f" % evaluation_metrics['auc'])
 print("Accuracy on the validation set: %0.2f" % evaluation_metrics['accuracy'])
+print("Recal on the validation set: %0.2f" % evaluation_metrics['recall'])
 
 """### Solution
 
