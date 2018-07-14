@@ -344,7 +344,7 @@ def train_linear_classifier_model(
 linear_classifier = train_linear_classifier_model(
     learning_rate=0.1,
     # TWEAK THE REGULARIZATION VALUE BELOW
-    regularization_strength=0.0,
+    regularization_strength=0.75,
     steps=300,
     batch_size=100,
     feature_columns=construct_feature_columns(),
@@ -354,7 +354,10 @@ linear_classifier = train_linear_classifier_model(
     validation_targets=validation_targets)
 print("Model size:", model_size(linear_classifier))
 
-"""### Solution
+"""Notes:
+increasing the regularization strength improves the model: **smaller** LogLoss and **smaller** model size
+
+### Solution
 
 Click below to see a possible solution.
 
