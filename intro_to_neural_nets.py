@@ -162,7 +162,9 @@ def my_input_fn(features, targets, batch_size=1, shuffle=True, num_epochs=None):
     Returns:
       Tuple of (features, labels) for next data batch
     """
-    
+    # features: <class 'pandas.core.frame.DataFrame'> 
+    # targets: <class 'pandas.core.series.Series'>
+
     # Convert pandas data into a dict of np arrays.
     features = {key:np.array(value) for key,value in dict(features).items()}                                             
  
@@ -249,9 +251,10 @@ def train_nn_regression_model(
         steps=steps_per_period
     )
     # Take a break and compute predictions.
+    # on the training input
     training_predictions = dnn_regressor.predict(input_fn=predict_training_input_fn)
     training_predictions = np.array([item['predictions'][0] for item in training_predictions])
-    
+    #on the validation input
     validation_predictions = dnn_regressor.predict(input_fn=predict_validation_input_fn)
     validation_predictions = np.array([item['predictions'][0] for item in validation_predictions])
     
@@ -308,6 +311,190 @@ dnn_regressor = train_nn_regression_model(
     validation_examples=validation_examples,
     validation_targets=validation_targets)
 
+"""looks like hte models didn't overfit - but loss was ~215, and not 110 as required.
+
+Another attempt, this time using more neurons in the second layer
+"""
+
+dnn_regressor = train_nn_regression_model(
+    learning_rate=0.01,
+    steps=500,
+    batch_size=10,
+    hidden_units=[10, 10],
+    training_examples=training_examples,
+    training_targets=training_targets,
+    validation_examples=validation_examples,
+    validation_targets=validation_targets)
+
+"""more neurons - [10,10]  produce a better loss (130) and no sign of overfitting.
+however - **the loss plot became very juggy**, and different in both executions... is that fine?
+
+trying again with same LR, layers but more steps (800):
+"""
+
+dnn_regressor = train_nn_regression_model(
+    learning_rate=0.01,
+    steps=800,
+    batch_size=10,
+    hidden_units=[10, 10],
+    training_examples=training_examples,
+    training_targets=training_targets,
+    validation_examples=validation_examples,
+    validation_targets=validation_targets)
+
+"""more steps result executions: 
+
+1.   the loss on training and validation hasn't changed much but seems more tight than before....
+2.   same
+3.   juggy loss, landed on 190 - no good
+
+
+Next attempt: leaving the steps on 800, and adding a 3rd layer of 10 neurons:
+"""
+
+dnn_regressor = train_nn_regression_model(
+    learning_rate=0.01,
+    steps=800,
+    batch_size=10,
+    hidden_units=[10, 10, 10],
+    training_examples=training_examples,
+    training_targets=training_targets,
+    validation_examples=validation_examples,
+    validation_targets=validation_targets)
+
+"""executions:
+
+
+1.   Loss dropped below 120
+2.   loss ~120, but just a little less tight than before. trying again
+3.   Loss is at 145~ - not that good :(
+4.   Juggy loss - landed on 220 :(
+
+The only thing that seems consistent is the increasing the # of steps produces tighter loss on validation and training samples.
+
+Next - **reducing the number of neurons** in each layers:
+
+leaving 3 layers but dropping hte nuber of neurons to 5 in each
+"""
+
+dnn_regressor = train_nn_regression_model(
+    learning_rate=0.01,
+    steps=800,
+    batch_size=10,
+    hidden_units=[5, 5, 5],
+    training_examples=training_examples,
+    training_targets=training_targets,
+    validation_examples=validation_examples,
+    validation_targets=validation_targets)
+
+"""First impression - good - the **curve is smoother** and loss is at 125~
+
+second impression - smooth curve but loss is too hight ~200
+
+third - same as second
+
+ **Interestingly - the total number of neurons is roughly the same as the first execution - [10,2] and [5,5,5]**
+ 
+ Next - keeping the same totoal number of neurons but adding a **4th** layer
+"""
+
+dnn_regressor = train_nn_regression_model(
+    learning_rate=0.01,
+    steps=800,
+    batch_size=10,
+    hidden_units=[4, 4, 4, 4],
+    training_examples=training_examples,
+    training_targets=training_targets,
+    validation_examples=validation_examples,
+    validation_targets=validation_targets)
+
+"""First impression for 4th layer X 16 neurons - loss is at 125~, curve is a bit more juggy. waiting for the second....
+
+Second - **not so good** as curve seems juggy and loss landed on 190~
+
+Next - trying 12 neurons in 4 layers
+"""
+
+dnn_regressor = train_nn_regression_model(
+    learning_rate=0.01,
+    steps=800,
+    batch_size=10,
+    hidden_units=[3,3,3,3],
+    training_examples=training_examples,
+    training_targets=training_targets,
+    validation_examples=validation_examples,
+    validation_targets=validation_targets)
+
+"""first impression - **smooth decreasing loss, but high**, 200~. 
+
+is 12 the magic number of neurons?
+
+interesting second result - curve is decreasing, loss is 120~
+
+third attempt - loss land at 200 but the curve is smooth nad decreasing.
+
+Next - trying more steps with 3x4 setup:
+"""
+
+dnn_regressor = train_nn_regression_model(
+    learning_rate=0.001,
+    steps=5000,
+    batch_size=10,
+    hidden_units=[3,3,3,3],
+    training_examples=training_examples,
+    training_targets=training_targets,
+    validation_examples=validation_examples,
+    validation_targets=validation_targets)
+
+"""just increasing the number of steps to 1600  seem to mess it up.... (is this where early stopping plays a role?)
+
+**interestingly** keeping the 12 neurons and the LR-to-steps ratio seems to keep the loss curve at bay, i.e. smooth and decreasing
+
+LR = 0.001, steps = 5000 and 3,3,3,3 NN decrease the loss in a smooth curve to below 120.
+
+**so far - it seems that more layers require more steps and smaller LR**
+
+tried a similar setup with 4,4,2,2 and 6,6 - was not improving...
+
+interestingly - larger batch size - 100 - creates a less juggy curve?
+
+next - reduced the LR to 0.000**3** and tripled the steps to **15**000 ina **3,3,3,3** NN
+
+next - reduced the LR to 0.000**1** and tripled the steps to **50**000 ina **4,4,4,4** NN
+
+at this point the loss droped to 105~, the curve was steadily dropping. that's **GOOD**
+
+next - added a **5th layer**... it trains slower, and the drop is small, at first! the last 2 periods demonstrated a stiffer slop.
+
+next adding more steps (70000)
+
+the one thing that proved a good chice was increasing the batch size - it added stability - the loss-curve isn't as juggy.
+
+70000 steps was not producing a better loss with a 4,4,4,4,4 NN, tho it started with a 200+ loss and dropped well from there. **is the NN initialisation the cause**?
+
+a second attempt was somewhat better.... but again - couldn't land it lower than 105~
+
+trying a different NN setups:
+
+5,5,5,5 - two attempts, one was a bit better.... 
+
+8,8,8,8 - two attempts both were **better** - stablising on **97+**, very tight training and validation losses
+
+10,10,10,10 one execution perform slightly better - reducing loss to 94.
+
+Other combinations, such as 5 or 6 layers, more neuron did not drop the loss much further.
+"""
+
+dnn_regressor = train_nn_regression_model(
+    learning_rate=0.0001,
+    steps=50000,
+    batch_size=100,
+    hidden_units=[10,10,10,10],
+    training_examples=training_examples,
+    training_targets=training_targets,
+    validation_examples=validation_examples,
+    validation_targets=validation_targets)
+
 """### Solution
 
 Click below to see a possible solution
@@ -336,7 +523,30 @@ Reminder, the test data set is located [here](https://dl.google.com/mlcc/mledu-d
 
 california_housing_test_data = pd.read_csv("https://dl.google.com/mlcc/mledu-datasets/california_housing_test.csv", sep=",")
 
-# YOUR CODE HERE
+# build the features from the data
+test_examples = preprocess_features(california_housing_test_data)
+test_targets = preprocess_targets(california_housing_test_data)
+
+
+predict_validation_input_fn = lambda: my_input_fn(test_examples, 
+                                                  test_targets["median_house_value"], 
+                                                  num_epochs=1, 
+                                                    shuffle=False)
+# Train the model, but do so inside a loop so that we can periodically assess
+# loss metrics.
+print("Predictin with test data...")
+training_rmse = []
+validation_rmse = []
+# Take a break and compute predictions.
+#on the validation input
+validation_predictions = dnn_regressor.predict(input_fn=predict_validation_input_fn)
+validation_predictions = np.array([item['predictions'][0] for item in validation_predictions])
+    
+# Compute **predictions** and **test** loss.
+validation_root_mean_squared_error = math.sqrt(
+        metrics.mean_squared_error(validation_predictions, test_targets))
+# Occasionally print the current loss.
+print("RMSE (on training data: %0.2f" % (validation_root_mean_squared_error))
 
 """### Solution
 
